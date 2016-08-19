@@ -1,0 +1,161 @@
+defaultTasks 'java'
+
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath("org.springframework.boot:spring-boot-gradle-plugin:1.4.0.RELEASE")
+    }
+}
+
+apply plugin: 'java'
+apply plugin: 'eclipse'
+apply plugin: 'idea'
+apply plugin: 'spring-boot'
+
+
+jar {
+    baseName = 'gs-spring-boot'
+    version =  '0.1.0'
+}
+
+springBoot {
+  mainClass = "com.omspipeline.springboot.OMSPipelineApplication"
+}
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+repositories {
+    jcenter()
+    mavenCentral()
+	mavenLocal()
+	ivy{
+		layout 'maven'
+		layout "pattern",{
+		ivy "oracle/ojdbc7/ivy-12.1.0.2-bkp.xml"
+		artifact "oracle/ojdbc7/12.1.0.2/ojdbc7-12.1.0.2.jar"
+		}
+		url 'http://artifactory.gapinc.dev/artifactory/maven-repos/'
+	}
+}
+
+configurations{
+	all*.exclude module: 'hamcrest-core'
+	all*.exclude module: 'mockito-all'
+}
+
+dependencies {
+    // tag::jetty[]
+    compile("org.springframework.boot:spring-boot-starter-web") {
+        exclude module: "spring-boot-starter-tomcat"
+    }
+    compile("org.springframework.boot:spring-boot-starter-jetty")
+    // end::jetty[]
+    
+    
+    // tag::actuator[]
+    compile("org.springframework.boot:spring-boot-starter-actuator")
+    // end::actuator[]
+    testCompile("junit:junit")
+}
+
+dependencies {
+
+    compile 'org.json:json:20160212',
+    'junit:junit:4.12',
+	'org.mockito:mockito-core:1.9.5',
+  	'oracle:ojdbc7:12.1.0.2',
+    'ru.shadam.gretty:gretty-runner-tomcat8:1.3.0'
+		
+    testCompile 'junit:junit:4.12',
+    'org.hamcrest:hamcrest-all:1.3',
+	'org.mockito:mockito-core:1.9.5'
+}
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '2.3'
+}
+
+task initJavaFolders() {
+		description 'Initializes Java src and test folders.'
+		doLast{
+			def dirElements =  [['src'],['main', 'test'],['java','resources']].combinations()
+			dirElements.each {
+				def dir = new File(it.join(File.separator))
+			
+				if(!dir.exists()) {
+					dir.mkdirs()
+					println "created $dir"
+				}
+			}
+		}
+}
+
+task openTestResults() {
+	description 'Opens the JUnit test results on your default browser.'
+	doLast {
+		new java.awt.Desktop().open(file("$buildDir/reports/tests/index.html"))
+		}
+}
+
+task runJasmine(type:Exec){
+  description 'Runs jasmine on the command line.'
+  
+  workingDir 'src/test/jasmine'
+      doFirst {
+  		println("#####################################################################")
+  		println("Running jasmine tests now.")
+  		println("Please make sure jasmine files are in src/test/jasmine.")
+  		println("*********************************************************************")
+  		}
+  commandLine 'jasmine'
+  	  doLast {
+  	    println("*********************************************************************")
+  		println("Jasmine tests are now finished.")
+  		println("#####################################################################")
+  		}
+  
+}
+
+
+sourceSets {
+    main {
+        java { 
+        	srcDir 'src' 
+        }
+        resources { 
+        	srcDir 'src' 
+        }
+    }
+
+    test {
+        resources { 
+        	srcDir 'test' 
+        }
+        java { 
+        	srcDir 'test' 
+        }
+    }
+}
+
+
+test {
+
+      doFirst {
+  		println("#####################################################################")
+  		println("Running JUnit tests now.")
+  		println("*********************************************************************")
+  		}
+    dependsOn runJasmine
+
+    afterTest { desc, result -> 
+        println "Executing test ${desc.name}, from class [${desc.className}] with result: ${result.resultType}"
+    }
+     doLast {
+  	    println("*********************************************************************")
+  		println("JUnit tests are now finished.")
+  		println("#####################################################################")
+  		}
+}
